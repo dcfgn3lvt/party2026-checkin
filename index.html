@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>PARTY 2026 Check-In</title>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f7f7f7;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    #reader {
+      max-width: 400px;
+      margin: auto;
+      background: white;
+      padding: 10px;
+      border-radius: 15px;
+    }
+
+    #result {
+      max-width: 400px;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 15px;
+      background: white;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .success {
+      color: #16803c;
+    }
+
+    .warning {
+      color: #b77900;
+    }
+
+    .error {
+      color: #c62828;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🎉 PARTY 2026</h1>
+
+  <div class="subtitle">
+    Guest Check-In
+  </div>
+
+  <div id="reader"></div>
+
+  <div id="result">
+    📷 Scan a Guest QR Code
+  </div>
+
+
+  <script>
+
+    // ==================================================
+    // APPS SCRIPT WEB APP URL
+    // ==================================================
+
+    const APPS_SCRIPT_URL =
+      "https://script.google.com/macros/s/AKfycbywuvglBSw5mJfwxcsZQi-gTkJWsk-L5AOKl2hUBvqTB1baSmFsTfYufOI8oGNx4Wcm/exec";
+
+
+    let processing = false;
+
+
+    // ==================================================
+    // SHOW RESULT
+    // ==================================================
+
+    function showResult(message, className) {
+
+      const result =
+        document.getElementById("result");
+
+      result.className = className;
+
+      result.innerHTML = message;
+
+    }
+
+
+    // ==================================================
+    // WHEN QR CODE IS SCANNED
+    // ==================================================
+
+    function onScanSuccess(decodedText) {
+
+      if (processing) return;
+
+      processing = true;
+
+
+      showResult(
+        "⏳ Checking guest...",
+        ""
+      );
+
+
+      // Create unique callback name
+      const callbackName =
+        "checkInCallback_" + Date.now();
+
+
+      // Receive response from Apps Script
+      window[callbackName] = function(data) {
+
+        delete window[callbackName];
+
+
+        // SUCCESS
+        if (data.success) {
+
+          showResult(
+
+            "✅ CHECK-IN SUCCESSFUL<br><br>" +
+
+            data.name +
+
+            "<br><br>" +
+
+            data.guestId,
+
+            "success"
+
+          );
+
+        }
+
+
+        // ALREADY CHECKED IN
+        else if (data.alreadyCheckedIn) {
+
+          showResult(
+
+            "⚠️ ALREADY CHECKED IN<br><br>" +
+
+            data.name +
+
+            "<br><br>" +
+
+            data.guestId,
+
+            "warning"
+
+          );
+
+        }
+
+
+        // GUEST NOT FOUND
+        else {
+
+          showResult(
+
+            "❌ GUEST NOT FOUND<br><br>" +
+
+            (data.guestId || ""),
+
+            "error"
+
+          );
+
+        }
+
+
+        // Ready for next guest
+        setTimeout(function() {
+
+          processing = false;
+
+          showResult(
+            "📷 Ready for next guest",
+            ""
+          );
+
+        }, 3000);
+
+      };
+
+
+      // ==================================================
+      // SEND GUEST ID TO APPS SCRIPT
+      // ==================================================
+
+      const script =
+        document.createElement("script");
+
+
+      script.src =
+        APPS_SCRIPT_URL +
+        "?guestId=" +
+        encodeURIComponent(decodedText) +
+        "&callback=" +
+        callbackName;
+
+
+      // Connection error
+      script.onerror = function() {
+
+        delete window[callbackName];
+
+        showResult(
+          "❌ CONNECTION ERROR",
+          "error"
+        );
+
+        processing = false;
+
+      };
+
+
+      document.body.appendChild(script);
+
+    }
+
+
+    // ==================================================
+    // START QR SCANNER
+    // ==================================================
+
+    const scanner =
+      new Html5QrcodeScanner(
+
+        "reader",
+
+        {
+          fps: 10,
+          qrbox: 250
+        }
+
+      );
+
+
+    scanner.render(onScanSuccess);
+
+
+  </script>
+
+</body>
+</html>
